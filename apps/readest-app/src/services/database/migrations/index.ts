@@ -13,6 +13,21 @@ import { MigrationEntry, SchemaType } from '../migrate';
  *   2. Add a new key here with its migration array.
  */
 const migrations: Record<SchemaType, MigrationEntry[]> = {
+  learning: [
+    {
+      name: '2026110301_learning_commits',
+      sql: `
+        CREATE TABLE learning_commits (
+          commit_id TEXT PRIMARY KEY,
+          payload_json TEXT NOT NULL
+        );
+        CREATE TABLE learning_device (
+          singleton INTEGER PRIMARY KEY CHECK (singleton = 1),
+          device_id TEXT NOT NULL
+        );
+      `,
+    },
+  ],
   opds: [
     {
       name: '2026052701_opds_source_mappings',
