@@ -1,0 +1,54 @@
+{
+  "exerciseId": "ielts:listening:001-010",
+  "exerciseVersionId": "ielts:listening:001-010:v1",
+  "previousVersionId": null,
+  "materialVersionId": "ielts:material:001-200:20261027",
+  "audioAssetId": "ielts:audio:listening:001-010:v1",
+  "audioSha256": "128a967e08c895829efc24d5c1112d38b40585ce28e6ba2dc2f34ce25b4accee",
+  "answerVersionId": "ielts:answers:listening:001-010:v1",
+  "ruleVersion": "filled-events-v1",
+  "targets": [
+    {
+      "targetId": "ielts:entry:1:listening",
+      "originalNumber": 1,
+      "word": "atmosphere",
+      "correctNumbers": [1]
+    },
+    {
+      "targetId": "ielts:entry:4:listening",
+      "originalNumber": 4,
+      "word": "oxygen",
+      "correctNumbers": [4]
+    },
+    {
+      "targetId": "ielts:entry:5:listening",
+      "originalNumber": 5,
+      "word": "oxide",
+      "correctNumbers": [6]
+    },
+    {
+      "targetId": "ielts:entry:6:listening",
+      "originalNumber": 6,
+      "word": "carbon dioxide",
+      "correctNumbers": [7]
+    },
+    {
+      "targetId": "ielts:entry:7:listening",
+      "originalNumber": 7,
+      "word": "hydrogen",
+      "correctNumbers": [5]
+    },
+    {
+      "targetId": "ielts:entry:8:listening",
+      "originalNumber": 8,
+      "word": "core",
+      "correctNumbers": [3]
+    },
+    {
+      "targetId": "ielts:entry:9:listening",
+      "originalNumber": 9,
+      "word": "crust",
+      "correctNumbers": [2]
+    }
+  ]
+}

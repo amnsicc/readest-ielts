@@ -1,4 +1,4 @@
-import type { LearningRevision } from './types';
+import type { LearningDraft, LearningRevision } from './types';
 import { z } from 'zod';
 
 const revisionBase = {
@@ -42,7 +42,7 @@ export class LearningConflictError extends Error {
 
   constructor(
     readonly currentHeads: string[],
-    readonly draft: string | boolean,
+    readonly draft: LearningDraft,
   ) {
     super('This record changed. Your draft has been retained.');
   }
@@ -52,7 +52,7 @@ export class LearningSaveError extends Error {
   readonly code = 'SAVE_FAILED';
 
   constructor(
-    readonly draft: string | boolean,
+    readonly draft: LearningDraft,
     cause: unknown,
   ) {
     super('Saving failed. Your draft has been retained; retry when storage is available.', {

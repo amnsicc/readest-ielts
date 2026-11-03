@@ -10,6 +10,8 @@ export interface SaveReceipt {
   durable: true;
 }
 
+export type LearningDraft = string | boolean | Record<string, string>;
+
 export interface LearningRevision {
   schemaVersion: 1;
   id: string;

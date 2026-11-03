@@ -8,6 +8,10 @@ import type {
   SenseView,
 } from './types';
 import { z } from 'zod';
+import { ListeningStore } from './listeningStore';
+import { exerciseDefinitionSchema, saveDraftSchema, ListeningError } from './listening';
+import type { ExerciseDefinition, DraftInput } from './listening';
+import type { LearningDraft } from './types';
 
 const objectId = z
   .string()
@@ -41,11 +45,55 @@ export class LearningWorkspace {
   private pending: Promise<void> = Promise.resolve();
   private closing: Promise<void> | undefined;
   private failedSaves = new Map<string, LearningSaveError>();
+  private listening: Promise<ListeningStore> | undefined;
 
-  private constructor(private readonly persistence: LearningPersistence) {}
+  private constructor(
+    private readonly persistence: LearningPersistence,
+    private readonly host: LearningHost,
+  ) {}
 
   static async open(host: LearningHost): Promise<LearningWorkspace> {
-    return new LearningWorkspace(await LearningPersistence.open(host));
+    return new LearningWorkspace(await LearningPersistence.open(host), host);
+  }
+
+  private listeningStore() {
+    this.listening ??= ListeningStore.open(this.host).catch((error: unknown) => {
+      this.listening = undefined;
+      throw error;
+    });
+    return this.listening;
+  }
+  async registerExerciseVersion(definition: ExerciseDefinition) {
+    const parsed = validate(exerciseDefinitionSchema, definition);
+    return this.save(`definition/${parsed.exerciseVersionId}`, {}, async () =>
+      (await this.listeningStore()).register(parsed),
+    );
+  }
+  openExercise(exerciseId: string) {
+    return this.save(`exercise/${exerciseId}`, {}, async () =>
+      (await this.listeningStore()).openExercise(exerciseId),
+    );
+  }
+  async saveDraft(input: DraftInput) {
+    const parsed = validate(saveDraftSchema, input);
+    return this.save(`draft/${parsed.roundId}`, parsed.rawInputs, async () =>
+      (await this.listeningStore()).saveDraft(parsed),
+    );
+  }
+  checkRound(roundId: string) {
+    return this.save(`result/${roundId}`, {}, async () =>
+      (await this.listeningStore()).checkRound(roundId),
+    );
+  }
+  startNewRound(exerciseId: string) {
+    return this.save(`exercise/${exerciseId}`, {}, async () =>
+      (await this.listeningStore()).startNewRound(exerciseId),
+    );
+  }
+  getRound(roundId: string) {
+    return this.save(`query/${roundId}`, {}, async () =>
+      (await this.listeningStore()).getRound(roundId),
+    );
   }
 
   async setPersonalMeaning(input: {
@@ -101,18 +149,19 @@ export class LearningWorkspace {
     });
   }
 
-  private save(
-    recordId: string,
-    draft: string | boolean,
-    operation: () => Promise<SaveReceipt>,
-  ): Promise<SaveReceipt> {
+  private save<T>(recordId: string, draft: LearningDraft, operation: () => Promise<T>): Promise<T> {
     if (this.closing)
       return Promise.reject(
         Object.assign(new Error('The learning workspace is closed.'), { code: 'CLOSED' }),
       );
     const requested = this.pending.then(operation).catch((cause: unknown) => {
       // All work after accepting an edit, including identity generation and reads, is fallible.
-      if (cause instanceof LearningConflictError || cause instanceof LearningSaveError) throw cause;
+      if (
+        cause instanceof LearningConflictError ||
+        cause instanceof LearningSaveError ||
+        cause instanceof ListeningError
+      )
+        throw cause;
       throw new LearningSaveError(draft, cause);
     });
     this.pending = requested.then(
@@ -173,8 +222,9 @@ export class LearningWorkspace {
 
   close(): Promise<void> {
     this.closing ??= this.pending
-      .then(() => {
+      .then(async () => {
         if (this.failedSaves.size) throw this.failedSaves.values().next().value;
+        if (this.listening) await (await this.listening).close();
         return this.persistence.close();
       })
       .catch((error: unknown) => {
