@@ -1,5 +1,5 @@
 import { LearningPersistence } from './persistence';
-import { LearningSaveError, revisionIdentity } from './revisions';
+import { LearningConflictError, LearningSaveError, revisionIdentity } from './revisions';
 import type {
   LearningHost,
   LearningModule,
@@ -54,7 +54,7 @@ export class LearningWorkspace {
     expectedHeads: string[];
   }): Promise<SaveReceipt> {
     input = validate(meaningInput, input);
-    return this.save(`meaning/${input.senseId}`, async () => {
+    return this.save(`meaning/${input.senseId}`, input.text, async () => {
       const revision: LearningRevision = {
         schemaVersion: 1,
         id: await revisionIdentity(
@@ -81,7 +81,7 @@ export class LearningWorkspace {
     expectedHeads: string[];
   }): Promise<SaveReceipt> {
     input = validate(markInput, input);
-    return this.save(`mark/${input.module}/${input.objectId}`, async () => {
+    return this.save(`mark/${input.module}/${input.objectId}`, input.marked, async () => {
       const revision: LearningRevision = {
         schemaVersion: 1,
         id: await revisionIdentity(
@@ -101,12 +101,20 @@ export class LearningWorkspace {
     });
   }
 
-  private save(recordId: string, operation: () => Promise<SaveReceipt>): Promise<SaveReceipt> {
+  private save(
+    recordId: string,
+    draft: string | boolean,
+    operation: () => Promise<SaveReceipt>,
+  ): Promise<SaveReceipt> {
     if (this.closing)
       return Promise.reject(
         Object.assign(new Error('The learning workspace is closed.'), { code: 'CLOSED' }),
       );
-    const requested = this.pending.then(operation);
+    const requested = this.pending.then(operation).catch((cause: unknown) => {
+      // All work after accepting an edit, including identity generation and reads, is fallible.
+      if (cause instanceof LearningConflictError || cause instanceof LearningSaveError) throw cause;
+      throw new LearningSaveError(draft, cause);
+    });
     this.pending = requested.then(
       () => {
         this.failedSaves.delete(recordId);

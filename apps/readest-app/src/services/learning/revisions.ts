@@ -11,8 +11,20 @@ const revisionBase = {
 };
 
 const revisionSchema = z.discriminatedUnion('kind', [
-  z.strictObject({ ...revisionBase, kind: z.literal('meaning'), value: z.string() }),
-  z.strictObject({ ...revisionBase, kind: z.literal('review-mark'), value: z.boolean() }),
+  z.strictObject({
+    ...revisionBase,
+    recordId: z.string().regex(/^meaning\/[A-Za-z0-9][A-Za-z0-9:._-]{0,255}$/),
+    kind: z.literal('meaning'),
+    value: z.string().max(65536),
+  }),
+  z.strictObject({
+    ...revisionBase,
+    recordId: z
+      .string()
+      .regex(/^mark\/(reading|listening|speaking|writing)\/[A-Za-z0-9][A-Za-z0-9:._-]{0,255}$/),
+    kind: z.literal('review-mark'),
+    value: z.boolean(),
+  }),
 ]);
 
 export function parseRevision(json: string): LearningRevision {

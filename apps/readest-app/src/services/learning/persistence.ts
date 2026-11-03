@@ -3,6 +3,7 @@ import { migrate } from '@/services/database/migrate';
 import { getMigrations } from '@/services/database/migrations';
 import type { LearningHost, LearningRevision } from './types';
 import { LearningConflictError, LearningSaveError, parseRevision, recordHeads } from './revisions';
+import { z } from 'zod';
 
 export class LearningPersistence {
   private closed = false;
@@ -24,17 +25,38 @@ export class LearningPersistence {
           code: 'UNSUPPORTED_VERSION',
         });
       }
-      await migrate(db, migrations);
+      // Seed a new identity in the schema-creation transaction. Opening an existing schema never
+      // re-seeds a missing/damaged identity with another device's provenance.
+      const bootstrap =
+        versions[0]!.user_version === 0
+          ? migrations.map((migration, index) =>
+              index === 0
+                ? {
+                    ...migration,
+                    sql: `${migration.sql}\nINSERT INTO learning_device (singleton, device_id) VALUES (1, '${z.uuid().parse(crypto.randomUUID())}');`,
+                  }
+                : migration,
+            )
+          : migrations;
+      await migrate(db, bootstrap);
       const persistence = new LearningPersistence(db, '');
       await persistence.readAll();
-      await db.execute(
-        'INSERT OR IGNORE INTO learning_device (singleton, device_id) VALUES (1, ?)',
-        [crypto.randomUUID()],
-      );
       const devices = await db.select<{ device_id: string }>(
         'SELECT device_id FROM learning_device WHERE singleton = 1',
       );
-      return new LearningPersistence(db, devices[0]!.device_id);
+      const device = z
+        .array(z.strictObject({ device_id: z.uuid() }))
+        .length(1)
+        .safeParse(devices);
+      if (!device.success) {
+        throw Object.assign(
+          new Error('The local learning device identity is damaged. The data has been retained.', {
+            cause: device.error,
+          }),
+          { code: 'CORRUPT_DATA' },
+        );
+      }
+      return new LearningPersistence(db, device.data[0]!.device_id);
     } catch (error) {
       await db.close();
       throw error;
@@ -91,6 +113,9 @@ export class LearningPersistence {
   }
 
   private async appendOnce(revision: LearningRevision): Promise<void> {
+    // The exact bytes to be committed must also satisfy our persisted-read protocol.
+    const payload = JSON.stringify(revision);
+    parseRevision(payload);
     const currentHeads = recordHeads(await this.readAll(), revision.recordId)
       .map((r) => r.id)
       .sort();
@@ -101,12 +126,20 @@ export class LearningPersistence {
     try {
       await this.db.execute(
         'INSERT INTO learning_commits (commit_id, payload_json) VALUES (?, ?)',
-        [revision.id, JSON.stringify(revision)],
+        [revision.id, payload],
       );
     } catch (error) {
-      const latest = recordHeads(await this.readAll(), revision.recordId)
-        .map((r) => r.id)
-        .sort();
+      let latest: string[];
+      try {
+        latest = recordHeads(await this.readAll(), revision.recordId)
+          .map((r) => r.id)
+          .sort();
+      } catch (readError) {
+        throw new LearningSaveError(
+          revision.value,
+          new AggregateError([error, readError], 'Writing and the recovery read both failed.'),
+        );
+      }
       if (JSON.stringify(latest) !== JSON.stringify(expectedHeads)) {
         throw new LearningConflictError(latest, revision.value);
       }
