@@ -7,13 +7,18 @@ import { createServer } from 'node:net';
 import { join, resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { promisify } from 'node:util';
+import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 
 const [exeArg, outputArg, mode = 'exercise'] = process.argv.slice(2);
 if (process.platform !== 'win32' || !exeArg || !outputArg) {
   throw new Error('Usage on Windows: node verify-ielts-windows.mjs <exe> <output> [exercise|reopen|restore|smoke]');
 }
-assert.ok(['exercise', 'reopen', 'restore', 'smoke'].includes(mode));
+assert.ok([
+  'exercise', 'reopen', 'reopen-full', 'restore', 'smoke', 'mark-off', 'mark-off-reopen',
+  'alt-clean', 'alt-dirty', 'alt-saving', 'multi-reader-first', 'multi-main-first',
+  'multi-main-dirty', 'multi-main-saving', 'restore-write', 'restore-write-reopen',
+].includes(mode));
 const exe = resolve(exeArg);
 const output = resolve(outputArg);
 const run = promisify(execFile);
@@ -54,21 +59,34 @@ const closed = new Promise((done, reject) => {
 closed.catch(() => {});
 let page;
 const requestClose = async () => {
-  // Post WM_CLOSE to the actual native window without taking desktop focus.
-  const { stdout } = await run('powershell.exe', [
-    '-NoProfile',
-    '-NonInteractive',
-    '-Command',
-    `$app=Get-Process -Id ${child.pid} -ErrorAction Stop; $app.CloseMainWindow()`,
+  const script = new URL('./ielts-native-window.ps1', import.meta.url);
+  const { stdout } = await run('pwsh', [
+    '-NoProfile', '-File', fileURLToPath(script), '-ProcessId', String(child.pid),
+    '-Action', mode.startsWith('alt-') ? 'AltF4' : 'Close',
   ]);
-  assert.match(stdout, /True/i);
+  console.log('OS_CLOSE_TARGET', stdout.trim());
+  const result = JSON.parse(stdout.trim().split(/\r?\n/).at(-1));
+  assert.equal(result.posted, true);
+  assert.equal(result.target.ClassName, 'Tauri Window');
 };
-
 const verifyExit = async () => {
+  emit('before native close', await page.evaluate(async () => ({
+    windows: await window.__TAURI_INTERNALS__.invoke('plugin:window|get_all_windows'),
+    saveIndicators: Array.from(document.querySelectorAll('[role="status"]'), (node) => node.textContent),
+  })));
+  const started = Date.now();
   await requestClose();
   const stopped = await Promise.race([closed, delay(12000, null, { ref: false })]);
+  if (!stopped && !page.isClosed()) {
+    console.log('CLOSE_TIMEOUT_STATE', JSON.stringify(await page.evaluate(async () => ({
+      url: location.href,
+      windows: await window.__TAURI_INTERNALS__.invoke('plugin:window|get_all_windows'),
+      focus: document.hasFocus(),
+      visibility: document.visibilityState,
+    }))));
+  }
   assert.deepEqual(stopped, { code: 0, signal: null });
-  emit('native process completely exited');
+  emit('native process completely exited', { elapsedMs: Date.now() - started, mode, pid: child.pid });
 };
 
 const cancelNativeClose = async () => {
@@ -166,8 +184,11 @@ async function verify() {
     };
   });
   assert.equal(identity.version, '0.1.0');
+  if (process.env['IELTS_VERIFY_RECOVERY_IDENTITY'] === '1') {
+    assert.ok(identity.directories.data.endsWith('local.ielts.readest.trial.restore.w01'));
+  }
   assert.equal(identity.updaterDisabled, true);
-  assert.equal(identity.name, mode === 'restore' ? 'Readest IELTS Trial Restore' : 'Readest IELTS Trial');
+  assert.equal(identity.name, mode.startsWith('restore') || process.env['IELTS_VERIFY_RECOVERY_IDENTITY'] === '1' ? 'Readest IELTS Trial Restore' : 'Readest IELTS Trial');
   assert.match(identity.url, /^https?:\/\/tauri\.localhost/);
   const blocked = await page.evaluate(async () => {
     try {
@@ -240,6 +261,181 @@ async function verify() {
     await dialog.waitFor();
     return { dialog, paragraph: target.locator('xpath=ancestor::p[1]') };
   };
+
+  if (mode === 'alt-clean') {
+    await verifyExit();
+    return;
+  }
+  if (mode === 'alt-dirty' || mode === 'alt-saving') {
+    await openModule('阅读', '001–020 阅读A');
+    await page.getByRole('button', { name: /001 atmosphere/ }).click();
+    await page.getByRole('button', { name: '编辑个人释义' }).click();
+    const input = page.getByLabel('个人释义');
+    const previous = await input.inputValue();
+    await input.fill('Alt+F4 保存保护');
+    if (mode === 'alt-saving') {
+      await page.evaluate(() => {
+        const fetchNative = window.fetch.bind(window);
+        window.fetch = async (url, options) => {
+          if (String(url).includes('ipc.localhost') && String(options?.body).includes('INSERT INTO learning_commits')) {
+            window.fetch = fetchNative;
+            await new Promise((done) => { window.releaseCloseWrite = done; });
+          }
+          return fetchNative(url, options);
+        };
+      });
+      await page.getByRole('button', { name: '保存释义' }).click();
+      await page.waitForFunction(() => typeof window.releaseCloseWrite === 'function');
+      await requestClose();
+      await delay(600);
+      assert.equal(child.exitCode, null);
+      assert.equal(await input.inputValue(), 'Alt+F4 保存保护');
+      await page.evaluate(() => window.releaseCloseWrite());
+      await page.getByText('已保存', { exact: true }).waitFor();
+      // Return to the previous value so later restoration checks remain exact.
+      await page.getByRole('button', { name: '编辑个人释义' }).click();
+      await input.fill(previous);
+      await page.getByRole('button', { name: '保存释义' }).click();
+      await page.getByText('已保存', { exact: true }).waitFor();
+    } else {
+      await requestClose();
+      await cancelNativeClose();
+      assert.equal(await input.inputValue(), 'Alt+F4 保存保护');
+      await page.getByRole('button', { name: '取消编辑' }).click();
+    }
+    emit('Alt+F4 retained the pending or cancelled editor', { mode });
+    await verifyExit();
+    return;
+  }
+  if (mode.startsWith('mark-off')) {
+    await openModule('写作', '001–020 写作词表');
+    await page.getByRole('button', { name: new RegExp(personal) }).click();
+    if (mode === 'mark-off') {
+      await page.getByRole('button', { name: '标为待复习' }).click();
+      await page.getByText('已保存', { exact: true }).waitFor();
+    }
+    await page.getByRole('button', { name: '取消待复习' }).waitFor();
+    await home();
+    await openModule('阅读', '001–020 阅读A');
+    await page.getByRole('button', { name: /001 atmosphere/ }).click();
+    if (mode === 'mark-off') {
+      await page.getByRole('button', { name: '取消待复习' }).click();
+      await page.getByText('已保存', { exact: true }).waitFor();
+    }
+    await page.getByRole('button', { name: '标为待复习' }).waitFor();
+    await page.getByLabel('只看待复习').check();
+    assert.equal(await page.getByRole('button', { name: /001 atmosphere/ }).count(), 0);
+    await page.getByLabel('只看待复习').uncheck();
+    await home();
+    await openModule('阅读', '001–020 阅读B');
+    await page.getByRole('button', { name: /001 atmosphere/ }).click();
+    await page.getByRole('button', { name: '标为待复习' }).waitFor();
+    emit('reading mark cancellation shared by A/B and excluded by filter', { mode });
+    await verifyExit();
+    return;
+  }
+  if (mode.startsWith('restore-write')) {
+    await openModule('阅读', '001–020 阅读A');
+    await page.getByRole('button', { name: /001 atmosphere/ }).click();
+    if (mode === 'restore-write') {
+      await page.getByRole('button', { name: '编辑个人释义' }).click();
+      await page.getByLabel('个人释义').fill('隔离恢复后的续写');
+      await page.getByRole('button', { name: '保存释义' }).click();
+      await page.getByText('已保存', { exact: true }).waitFor();
+    }
+    await page.getByText('隔离恢复后的续写', { exact: true }).waitFor();
+    emit('restored profile saved or reopened a new value', { mode });
+    await verifyExit();
+    return;
+  }
+  if (mode.startsWith('multi-')) {
+    await openModule('阅读', '001–020 阅读A');
+    const { dialog } = await openReaderSense('A');
+    await dialog.getByRole('button', { name: '关闭', exact: true }).click();
+    const readerUrl = new URL(page.url());
+    const secondary = context.waitForEvent('page');
+    await page.evaluate(async (url) => {
+      await window.__TAURI_INTERNALS__.invoke('plugin:webview|create_webview_window', {
+        options: {
+          label: 'reader-close-test', url, width: 1000, height: 750,
+          decorations: true, scrollBarStyle: 'fluentOverlay',
+        },
+      });
+    }, readerUrl.pathname + readerUrl.search);
+    const reader = await secondary;
+    reader.setDefaultTimeout(20000);
+    await reader.locator('foliate-view').first().waitFor();
+    const windows = await page.evaluate(() => window.__TAURI_INTERNALS__.invoke('plugin:window|get_all_windows'));
+    assert.deepEqual(windows.sort(), ['main', 'reader-close-test']);
+    if (mode === 'multi-main-dirty' || mode === 'multi-main-saving') {
+      await home();
+      await openModule('阅读', '001–020 阅读A');
+      await page.getByRole('button', { name: /001 atmosphere/ }).click();
+      await page.getByRole('button', { name: '编辑个人释义' }).click();
+      const draft = page.getByLabel('个人释义');
+      const previous = await draft.inputValue();
+      await draft.fill('多窗口未保存草稿');
+      if (mode === 'multi-main-saving') {
+        await page.evaluate(() => {
+          const fetchNative = window.fetch.bind(window);
+          window.fetch = async (url, options) => {
+            if (String(url).includes('ipc.localhost') && String(options?.body).includes('INSERT INTO learning_commits')) {
+              window.fetch = fetchNative;
+              await new Promise((done) => { window.releaseOtherWrite = done; });
+            }
+            return fetchNative(url, options);
+          };
+        });
+        await page.getByRole('button', { name: '保存释义' }).click();
+        await page.waitForFunction(() => typeof window.releaseOtherWrite === 'function');
+      }
+      const readerClosed = reader.waitForEvent('close');
+      await reader.evaluate(() => window.__TAURI_INTERNALS__.invoke('plugin:window|close', { label: 'reader-close-test' }));
+      await readerClosed;
+      assert.equal(await draft.inputValue(), '多窗口未保存草稿');
+      if (mode === 'multi-main-saving') {
+        await page.evaluate(() => window.releaseOtherWrite());
+        await page.getByText('已保存', { exact: true }).waitFor();
+        await page.getByRole('button', { name: '编辑个人释义' }).click();
+        await draft.fill(previous);
+        await page.getByRole('button', { name: '保存释义' }).click();
+        await page.getByText('已保存', { exact: true }).waitFor();
+      } else {
+        await page.getByRole('button', { name: '取消编辑' }).click();
+      }
+      emit('closing a reader retained the other window draft');
+      await verifyExit();
+      return;
+    }
+    if (mode === 'multi-reader-first') {
+      const readerClosed = reader.waitForEvent('close');
+      await reader.evaluate(() => window.__TAURI_INTERNALS__.invoke('plugin:window|close', { label: 'reader-close-test' }));
+      await readerClosed;
+      await home();
+      await openModule('听力', '001–010 原音练习');
+      assert.equal(await page.getByRole('textbox', { name: 'atmosphere 出现序号' }).inputValue(), '7');
+      await page.getByRole('button', { name: '保存填写' }).click();
+      await page.getByText('已保存', { exact: true }).waitFor();
+      emit('reader closed first; main continued native reads and writes');
+      await verifyExit();
+      return;
+    }
+    const mainClosed = page.waitForEvent('close');
+    await page.evaluate(() => window.__TAURI_INTERNALS__.invoke('plugin:window|close', { label: 'main' }));
+    await mainClosed;
+    page = reader;
+    await page.goto(new URL('/learning?module=listening&material=trial', page.url()).href);
+    await page.getByRole('textbox', { name: 'atmosphere 出现序号' }).waitFor();
+    assert.equal(await page.getByRole('textbox', { name: 'atmosphere 出现序号' }).inputValue(), '7');
+    await page.getByRole('button', { name: '保存填写' }).click();
+    await page.getByText('已保存', { exact: true }).waitFor();
+    emit('main closed first; reader continued native reads and writes');
+    const started = Date.now();
+    await page.evaluate(() => window.__TAURI_INTERNALS__.invoke('plugin:window|close', { label: 'reader-close-test' }));
+    assert.deepEqual(await Promise.race([closed, delay(12000, null, { ref: false })]), { code: 0, signal: null });
+    emit('native process completely exited', { elapsedMs: Date.now() - started, mode });
+    return;
+  }
 
   await openModule('阅读', '001–020 阅读A');
   const { dialog: a, paragraph } = await openReaderSense('A');
@@ -336,7 +532,11 @@ async function verify() {
   await home();
   await openModule('阅读', '001–020 阅读B');
   await page.getByLabel('只看待复习').check();
-  await page.getByRole('button', { name: /atmosphere/ }).waitFor();
+  if (mode === 'restore') {
+    assert.equal(await page.getByRole('button', { name: /atmosphere/ }).count(), 0);
+  } else {
+    await page.getByRole('button', { name: /atmosphere/ }).waitFor();
+  }
   assert.equal(await page.getByRole('button', { name: /hydrosphere/ }).count(), 0);
   await page.getByLabel('只看待复习').uncheck();
   const { dialog: b } = await openReaderSense('B');
@@ -353,7 +553,7 @@ async function verify() {
   assert.equal(await page.getByText('atmosphere', { exact: true }).count(), 0);
   await writing.click();
   await page.getByText('atmosphere', { exact: true }).waitFor();
-  await page.getByRole('button', { name: '标为待复习' }).waitFor();
+  await page.getByRole('button', { name: mode === 'restore' ? '取消待复习' : '标为待复习' }).waitFor();
   await home();
   await openModule('写作', '001–020 写作词表');
   await writing.waitFor();
@@ -401,6 +601,7 @@ async function verify() {
     originalInput: '1、8',
     correctedInput: '1',
     first: '1/2',
+    checkedAtDisplay: await history.getByText(/已填写序号准确率 1\/2（50%）/).innerText(),
   });
 
   await page.evaluate((capture) => {
@@ -426,7 +627,7 @@ async function verify() {
       }
       return originalPlay.call(this);
     };
-  }, mode === 'exercise');
+  }, mode === 'exercise' || mode === 'restore' || mode === 'reopen-full');
   const play = page.getByRole('button', { name: '播放原音', exact: true });
   const pause = page.getByRole('button', { name: '暂停', exact: true });
   await play.click();
@@ -443,7 +644,7 @@ async function verify() {
   assert.equal(media.hash, '128a967e08c895829efc24d5c1112d38b40585ce28e6ba2dc2f34ce25b4accee');
   assert.equal(media.bytes, 492912);
   assert.ok(Math.abs(media.duration - 82.152) < 0.2);
-  if (mode === 'exercise') {
+  if (mode === 'exercise' || mode === 'restore' || mode === 'reopen-full') {
     await page.waitForFunction(() => window.trialMedia?.element.ended, undefined, { timeout: 100000 });
     await page.waitForFunction(() => window.trialMedia?.chunks.length > 0);
     const recorded = await page.evaluate(async () => {
@@ -479,7 +680,7 @@ async function verify() {
   await page.screenshot({ path: join(output, 'listening.png') });
   emit('exact fixed audio in native WebView2', {
     ...media,
-    verification: mode === 'exercise' ? 'full playback and Web Audio capture' : 'pause, seek and resume',
+    verification: mode === 'exercise' || mode === 'restore' ? 'full playback and Web Audio capture' : 'pause, seek and resume',
   });
   await verifyExit();
 }

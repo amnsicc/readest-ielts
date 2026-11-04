@@ -35,6 +35,19 @@ try {
         }
     }
     'PASS: partial state is explicit; restore rejected it before writing a destination.'
+    $lock.Dispose()
+    $fresh = Join-Path $output 'retry-complete'
+    & pwsh -NoProfile -File $script -Mode Backup -BackupDirectory $fresh
+    if ($LASTEXITCODE -ne 0) { throw 'Retry into a new directory failed.' }
+    & pwsh -NoProfile -File $script -Mode RestoreTest -BackupDirectory $fresh
+    if ($LASTEXITCODE -ne 0) { throw 'Complete backup restore failed.' }
+    foreach ($root in @($roaming, $local)) {
+        $restored = Join-Path $root 'local.ielts.readest.trial.restore.w01\saved.txt'
+        if ([IO.File]::ReadAllText($restored) -ne 'saved source') { throw 'Restored content differs.' }
+        $original = Join-Path $root 'local.ielts.readest.trial\saved.txt'
+        if ([IO.File]::ReadAllText($original) -ne 'saved source') { throw 'Source content changed.' }
+    }
+    'PASS: retry completed and both independent directories restored with exact content.'
 } finally {
     $lock.Dispose()
     $env:APPDATA = $oldRoaming
