@@ -2,7 +2,7 @@ import semver from 'semver';
 import packageJson from '../../package.json';
 
 export const getAppVersion = () => {
-  return packageJson.version;
+  return process.env['NEXT_PUBLIC_APP_VERSION'] || packageJson.version;
 };
 
 export interface ParsedUpdateVersion {

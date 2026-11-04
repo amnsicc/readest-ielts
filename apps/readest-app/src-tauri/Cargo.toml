@@ -15,6 +15,7 @@ name = "readestlib"
 crate-type = ["staticlib", "cdylib", "lib"]
 
 [features]
+ielts-trial = []
 default = ["wry"]
 # WebView2 / WKWebView runtime, and on Linux the WebKitGTK one, which is left
 # only for the webdriver test harness (scripts/test-tauri.sh) — every Linux

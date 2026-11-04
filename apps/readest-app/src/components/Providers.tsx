@@ -3,6 +3,8 @@
 import '@/utils/polyfill';
 import i18n from '@/i18n/i18n';
 import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 import { IconContext } from 'react-icons';
 import { AuthProvider } from '@/context/AuthContext';
 import { useEnv } from '@/context/EnvContext';
@@ -46,6 +48,7 @@ import { upgradeToKeychainIfAvailable } from '@/libs/crypto/passphrase';
 import { cryptoSession } from '@/libs/crypto/session';
 import { useAppLockStore } from '@/store/appLockStore';
 import { initSettingsSync } from '@/services/sync/replicaSettingsSync';
+import { tauriHandleOnCloseWindow } from '@/utils/window';
 
 // One-time, on first launch after this feature ships, decide how to handle
 // PostHog telemetry for the current install:
@@ -67,6 +70,7 @@ const finalizeTelemetryDecision = ({
   isNewUser: boolean;
   onShowPrompt: () => void;
 }) => {
+  if (process.env['NEXT_PUBLIC_IELTS_TRIAL'] === '1') return;
   const existing = getTelemetryDecision();
   if (existing === 'pending') {
     onShowPrompt();
@@ -113,6 +117,7 @@ const finalizeTelemetryDecision = ({
 };
 
 const Providers = ({ children }: { children: React.ReactNode }) => {
+  const isReaderRoute = usePathname()?.startsWith('/reader');
   const { envConfig, appService } = useEnv();
   const { applyUILanguage } = useSettingsStore();
   const { applyBackgroundTexture } = useBackgroundTexture();
@@ -126,6 +131,21 @@ const Providers = ({ children }: { children: React.ReactNode }) => {
   const [showTelemetryConsent, setShowTelemetryConsent] = useState(false);
   useSafeAreaInsets(); // Initialize safe area insets
   useSettingsSync(); // Adopt global settings broadcast by other windows (#4580)
+
+  useEffect(() => {
+    // ReaderContent supplies its own book flush on reader routes. All other
+    // routes still need the same guarded native close path.
+    if (!appService?.hasWindow || isReaderRoute) return;
+    const label = getCurrentWindow().label;
+    if (label !== 'main' && !label.startsWith('reader')) return;
+    const unlisten = tauriHandleOnCloseWindow(() => {}, appService).catch((error) => {
+      console.error('Failed to protect native window close', error);
+      return () => {};
+    });
+    return () => {
+      void unlisten.then((stop) => stop());
+    };
+  }, [appService, isReaderRoute]);
 
   useEffect(() => {
     const handlerLanguageChanged = (lng: string) => {

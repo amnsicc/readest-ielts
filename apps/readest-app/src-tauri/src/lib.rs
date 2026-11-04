@@ -425,7 +425,8 @@ fn compute_updater_disabled(
 
 #[cfg(desktop)]
 fn updater_disabled() -> bool {
-    let env_disable = std::env::var("READEST_DISABLE_UPDATER").is_ok();
+    let env_disable =
+        cfg!(feature = "ielts-trial") || std::env::var("READEST_DISABLE_UPDATER").is_ok();
     #[cfg(target_os = "linux")]
     {
         let is_flatpak =
@@ -850,7 +851,9 @@ pub fn run() {
             #[cfg(any(target_os = "windows", target_os = "linux"))]
             {
                 use tauri_plugin_deep_link::DeepLinkExt;
-                let _ = app.deep_link().register_all();
+                if !cfg!(feature = "ielts-trial") {
+                    let _ = app.deep_link().register_all();
+                }
             }
 
             #[cfg(desktop)]
@@ -992,15 +995,15 @@ pub fn run() {
             let win_builder = win_builder
                 .decorations(true)
                 .title_bar_style(TitleBarStyle::Overlay)
-                .title("Readest");
+                .title(app.package_info().name.clone());
 
             #[cfg(all(not(target_os = "macos"), desktop))]
             let win_builder = {
                 let mut builder = win_builder
-                    .decorations(false)
+                    .decorations(cfg!(feature = "ielts-trial"))
                     .visible(false)
                     .shadow(undecorated_shadow_is_symmetric())
-                    .title("Readest");
+                    .title(app.package_info().name.clone());
 
                 #[cfg(target_os = "windows")]
                 {

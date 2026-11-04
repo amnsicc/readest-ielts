@@ -1,3 +1,12 @@
 apps/readest-app/src/app/library/components/LibraryHeader.tsx text eol=lf
 apps/readest-app/src/app/page.tsx text eol=lf
 apps/readest-app/src/app/reader/components/FoliateViewer.tsx text eol=lf
+apps/readest-app/scripts/verify-ielts-windows.mjs text eol=lf
+apps/readest-app/src/__tests__/app/learning/nativeClose.test.tsx text eol=lf
+apps/readest-app/src/__tests__/utils/window.test.ts text eol=lf
+apps/readest-app/src/app/reader/components/ReaderContent.tsx text eol=lf
+apps/readest-app/src/components/Providers.tsx text eol=lf
+apps/readest-app/src/context/PHContext.tsx text eol=lf
+apps/readest-app/src/services/learning/studySession.ts text eol=lf
+apps/readest-app/src/utils/version.ts text eol=lf
+apps/readest-app/src/utils/window.ts text eol=lf

@@ -7,8 +7,6 @@ import { AppService } from '@/types/system';
 import { useTrafficLightStore } from '@/store/trafficLightStore';
 import { eventDispatcher } from './event';
 
-const APP_NAME = 'Readest';
-
 /**
  * The OS window title, e.g. `Readest - The Hobbit`. It is never drawn in the
  * UI — desktop windows are either decorationless (Windows/Linux) or hide their
@@ -16,8 +14,9 @@ const APP_NAME = 'Readest';
  * readers announce it, so it has to name the open book to tell windows apart.
  */
 export const formatAppWindowTitle = (bookTitle?: string) => {
+  const appName = process.env['NEXT_PUBLIC_APP_NAME'] || 'Readest';
   const title = bookTitle?.trim();
-  return title ? `${APP_NAME} - ${title}` : APP_NAME;
+  return title ? `${appName} - ${title}` : appName;
 };
 
 /**
@@ -125,7 +124,10 @@ export const tauriHandleClose = async () => {
   getCurrentWindow().close();
 };
 
-export const tauriHandleOnCloseWindow = async (callback: () => void) => {
+export const tauriHandleOnCloseWindow = async (
+  callback: () => void | Promise<void>,
+  host?: AppService,
+) => {
   const currentWindow = getCurrentWindow();
   return await currentWindow.onCloseRequested(async (event) => {
     event.preventDefault();
@@ -136,7 +138,24 @@ export const tauriHandleOnCloseWindow = async (callback: () => void) => {
     if (currentWindow.label === 'main' && (await osType()) === 'macos') {
       return;
     }
-    await callback();
+    const { studyCanLeave } = await import('@/app/learning/studyNavigation');
+    if (!studyCanLeave()) return;
+    try {
+      await callback();
+      // The native database plugin shares connections across WebViews. Closing
+      // one reader must not invalidate handles in another open window.
+      if (host && (await getAllWindows()).length === 1) {
+        const { closeStudyWorkspace } = await import('@/services/learning/studySession');
+        await closeStudyWorkspace(host);
+      }
+    } catch (error) {
+      console.error('Window close failed; keeping the current window open', error);
+      eventDispatcher.dispatch('toast', {
+        type: 'error',
+        message: '关闭前保存失败，窗口和编辑已保留。请重试保存后再关闭。',
+      });
+      return;
+    }
     if (currentWindow.label.startsWith('reader')) {
       await emitTo('main', 'close-reader-window', { label: currentWindow.label });
       setTimeout(() => currentWindow.destroy(), 300);
@@ -204,6 +223,10 @@ export const tauriHandleOnWindowFocus = async (callback: () => void) => {
 };
 
 export const tauriQuitApp = async () => {
+  if (process.env['NEXT_PUBLIC_IELTS_TRIAL'] === '1') {
+    await Promise.all((await getAllWindows()).map((window) => window.close()));
+    return;
+  }
   await eventDispatcher.dispatch('quit-app');
   await exit(0);
 };

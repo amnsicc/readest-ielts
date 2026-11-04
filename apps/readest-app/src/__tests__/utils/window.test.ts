@@ -27,7 +27,7 @@ vi.mock('@/utils/event', () => ({
   eventDispatcher: { dispatch: vi.fn() },
 }));
 
-import { getCurrentWindow } from '@tauri-apps/api/window';
+import { getAllWindows, getCurrentWindow } from '@tauri-apps/api/window';
 import { invoke } from '@tauri-apps/api/core';
 import { type as osType, version as osVersion } from '@tauri-apps/plugin-os';
 import { useTrafficLightStore } from '@/store/trafficLightStore';
@@ -36,6 +36,7 @@ import {
   formatAppWindowTitle,
   tauriHandleOnCloseWindow,
   tauriHandleToggleFullScreen,
+  tauriQuitApp,
   tauriSetWindowTitle,
   windowNeedsClientOutline,
 } from '@/utils/window';
@@ -128,6 +129,22 @@ describe('tauriHandleOnCloseWindow', () => {
   });
 });
 
+test('Windows trial quit requests guarded closure for every open study window', async () => {
+  vi.stubEnv('NEXT_PUBLIC_IELTS_TRIAL', '1');
+  const main = { close: vi.fn().mockResolvedValue(undefined) };
+  const reader = { close: vi.fn().mockResolvedValue(undefined) };
+  vi.mocked(getAllWindows).mockResolvedValue([main, reader] as unknown as Awaited<
+    ReturnType<typeof getAllWindows>
+  >);
+  try {
+    await tauriQuitApp();
+    expect(main.close).toHaveBeenCalled();
+    expect(reader.close).toHaveBeenCalled();
+  } finally {
+    vi.unstubAllEnvs();
+  }
+});
+
 function makeFullscreenWindow({
   isFullscreen,
   isMaximized,
@@ -206,6 +223,15 @@ describe('tauriHandleToggleFullScreen', () => {
 });
 
 describe('formatAppWindowTitle', () => {
+  test('identifies the custom Windows build in the OS window switcher', () => {
+    vi.stubEnv('NEXT_PUBLIC_APP_NAME', 'Readest IELTS Trial');
+    try {
+      expect(formatAppWindowTitle('阅读A')).toBe('Readest IELTS Trial - 阅读A');
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   test('names the open book so windows are distinguishable in Alt+Tab', () => {
     expect(formatAppWindowTitle('The Hobbit')).toBe('Readest - The Hobbit');
   });

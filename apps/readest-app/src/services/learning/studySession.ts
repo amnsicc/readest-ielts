@@ -16,3 +16,10 @@ export function getStudyWorkspace(host: LearningHost) {
   }
   return session;
 }
+
+export async function closeStudyWorkspace(host: LearningHost) {
+  const session = sessions.get(host);
+  if (!session) return;
+  await (await session).close();
+  sessions.delete(host);
+}

@@ -1,0 +1,22 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "Readest IELTS Trial",
+  "mainBinaryName": "readest-ielts",
+  "identifier": "local.ielts.readest.trial",
+  "version": "0.1.0",
+  "build": {
+    "beforeBuildCommand": "pnpm build"
+  },
+  "bundle": {
+    "active": false,
+    "fileAssociations": [],
+    "createUpdaterArtifacts": false
+  },
+  "plugins": {
+    "deep-link": {
+      "desktop": { "schemes": [] },
+      "mobile": []
+    },
+    "updater": { "endpoints": [] }
+  }
+}

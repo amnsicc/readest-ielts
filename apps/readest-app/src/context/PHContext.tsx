@@ -24,6 +24,7 @@ let initialized = false;
 export const initPostHog = () => {
   if (
     initialized ||
+    process.env['NEXT_PUBLIC_IELTS_TRIAL'] === '1' ||
     typeof window === 'undefined' ||
     process.env['NODE_ENV'] !== 'production' ||
     !posthogKey

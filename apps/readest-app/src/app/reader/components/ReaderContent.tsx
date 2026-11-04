@@ -233,10 +233,12 @@ const ReaderContent: React.FC<{ ids?: string; settings: SystemSettings }> = ({ i
 
     let unlistenOnCloseWindow: Promise<UnlistenFn>;
     if (appService?.hasWindow) {
-      unlistenOnCloseWindow = tauriHandleOnCloseWindow(handleCloseBooks).catch((error) => {
-        console.info('Failed to register close-window listener:', error);
-        return () => {};
-      });
+      unlistenOnCloseWindow = tauriHandleOnCloseWindow(handleCloseBooks, appService).catch(
+        (error) => {
+          console.info('Failed to register close-window listener:', error);
+          return () => {};
+        },
+      );
     }
     window.addEventListener('beforeunload', handleCloseBooks);
     eventDispatcher.on('beforereload', handleCloseBooks);
@@ -423,9 +425,6 @@ const ReaderContent: React.FC<{ ids?: string; settings: SystemSettings }> = ({ i
         const openWithFiles = (await parseOpenWithFiles(appService)) || [];
         if (appService?.hasWindow) {
           if (openWithFiles.length > 0) {
-            void tauriHandleOnCloseWindow(handleCloseBooks).catch((error) => {
-              console.info('Failed to register close-window listener:', error);
-            });
             await tauriHandleClose();
             return;
           }

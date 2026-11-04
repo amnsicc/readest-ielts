@@ -152,7 +152,9 @@ fn propagate_sentry_dsn() {
     println!("cargo:rerun-if-changed={}", env_local.display());
     println!("cargo:rerun-if-changed={}", env_file.display());
 
-    if env::var("PROFILE").as_deref() != Ok("release") {
+    if env::var_os("CARGO_FEATURE_IELTS_TRIAL").is_some()
+        || env::var("PROFILE").as_deref() != Ok("release")
+    {
         println!("cargo:rustc-env=SENTRY_DSN=");
         return;
     }
@@ -202,6 +204,7 @@ fn build_windows_thumbnail() {
 
     let mut cmd = Command::new(env::var("CARGO").unwrap_or("cargo".into()));
     cmd.arg("build")
+        .arg("--locked")
         .arg("--package")
         .arg("windows_thumbnail")
         .arg("--manifest-path")
