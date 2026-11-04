@@ -1,29 +1,126 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, type ComponentProps } from 'react';
+import { useLayoutEffect, type ComponentProps } from 'react';
 
-const unsaved = new Set<symbol>();
+const unsaved = new Map<symbol, boolean>();
+let protectedEntryIndex: number | undefined;
+let protectedEntryKey: string | undefined;
+let restoring = false;
+let refused = false;
+let permitted = false;
 
-export function studyCanLeave() {
-  return unsaved.size === 0 || window.confirm('还有未保存的学习编辑。要离开当前页面吗？');
+function entryIndex() {
+  return (window as unknown as { navigation?: { currentEntry?: { index: number } } }).navigation
+    ?.currentEntry?.index;
 }
 
-export function useUnsavedStudy(dirty: boolean) {
-  useEffect(() => {
-    if (!dirty) return;
+function onEntryChange(event: Event) {
+  // Some browser-initiated traversals cannot be cancelled. Restore the exact entry
+  // before allowing Next's popstate restoration to replace the editor.
+  if (refused || restoring) event.stopImmediatePropagation();
+  if (!refused || restoring || entryIndex() === protectedEntryIndex || !protectedEntryKey) return;
+  restoring = true;
+  const navigation = (
+    window as unknown as {
+      navigation: {
+        traverseTo(key: string): { committed: Promise<unknown>; finished: Promise<unknown> };
+      };
+    }
+  ).navigation;
+  const result = navigation.traverseTo(protectedEntryKey);
+  void result.committed.catch(() => {});
+  void result.finished.catch(() => {});
+}
+
+function onPopState(event: PopStateEvent) {
+  const index = entryIndex();
+  if (permitted) {
+    permitted = false;
+    return;
+  }
+  if (restoring) {
+    event.stopImmediatePropagation();
+    if (index === protectedEntryIndex) {
+      restoring = false;
+      refused = false;
+    }
+  } else if (
+    index !== undefined &&
+    protectedEntryIndex !== undefined &&
+    index !== protectedEntryIndex &&
+    (refused || !studyCanLeave())
+  ) {
+    event.stopImmediatePropagation();
+    restoring = true;
+    history.go(protectedEntryIndex - index);
+  }
+}
+
+export function studyCanLeave() {
+  if ([...unsaved.values()].some(Boolean)) {
+    return false;
+  }
+  return unsaved.size === 0 || window.confirm('离开将放弃尚未保存的学习编辑。是否离开当前页面？');
+}
+
+function onNavigate(event: Event) {
+  const traversal = event as Event & {
+    navigationType?: string;
+  };
+  if (restoring || traversal.navigationType !== 'traverse') return;
+  if (studyCanLeave()) {
+    refused = false;
+    permitted = true;
+    return;
+  }
+  refused = !event.cancelable;
+  if (event.cancelable) event.preventDefault();
+}
+
+function beforeUnload(event: BeforeUnloadEvent) {
+  if (unsaved.size === 0) return;
+  event.preventDefault();
+  event.returnValue = '';
+}
+
+export function useUnsavedStudy(dirty: boolean, saving = false) {
+  useLayoutEffect(() => {
+    if (!dirty && !saving) return;
     const token = Symbol();
-    unsaved.add(token);
-    const beforeUnload = (event: BeforeUnloadEvent) => {
-      event.preventDefault();
-      event.returnValue = '';
-    };
-    window.addEventListener('beforeunload', beforeUnload);
+    const navigation = (window as unknown as { navigation?: EventTarget }).navigation;
+    if (unsaved.size === 0) {
+      permitted = false;
+      protectedEntryIndex = entryIndex();
+      protectedEntryKey = (
+        navigation as (EventTarget & { currentEntry?: { key: string } }) | undefined
+      )?.currentEntry?.key;
+    }
+    unsaved.set(token, saving);
     return () => {
       unsaved.delete(token);
+      if (unsaved.size === 0) {
+        refused = false;
+      }
+    };
+  }, [dirty, saving]);
+}
+
+export function StudyHistoryGuard() {
+  useLayoutEffect(() => {
+    const navigation = (window as unknown as { navigation?: EventTarget }).navigation;
+    navigation?.addEventListener('navigate', onNavigate);
+    navigation?.addEventListener('currententrychange', onEntryChange, true);
+    window.addEventListener('popstate', onPopState, true);
+    window.addEventListener('beforeunload', beforeUnload);
+    return () => {
+      navigation?.removeEventListener('navigate', onNavigate);
+      navigation?.removeEventListener('currententrychange', onEntryChange, true);
+      window.removeEventListener('popstate', onPopState, true);
       window.removeEventListener('beforeunload', beforeUnload);
     };
-  }, [dirty]);
+  }, []);
+  return null;
 }
 
 export function StudyLink(props: ComponentProps<typeof Link>) {

@@ -12,6 +12,7 @@ import {
   type ReactNode,
 } from 'react';
 import { useRouter } from 'next/navigation';
+import { StudyHistoryGuard } from '@/app/learning/studyNavigation';
 
 const NavigationTransition = createContext((navigate: () => void) => navigate());
 
@@ -53,7 +54,12 @@ export function ViewTransitions({ children }: { children: ReactNode }) {
 
   // Only explicit push/replace calls animate. Native history navigation can
   // change just the query string (OPDS), with no new route mount to await.
-  return <NavigationTransition.Provider value={navigate}>{children}</NavigationTransition.Provider>;
+  return (
+    <NavigationTransition.Provider value={navigate}>
+      <StudyHistoryGuard />
+      {children}
+    </NavigationTransition.Provider>
+  );
 }
 
 export function useTransitionRouter() {

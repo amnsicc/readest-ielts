@@ -25,7 +25,7 @@ export function SenseEditor({
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const mark = view.reviewMarks[module];
-  useUnsavedStudy(draft !== null || busy || message.startsWith('保存失败'));
+  useUnsavedStudy(draft !== null || message.startsWith('保存失败'), busy);
   async function save(text?: string) {
     setBusy(true);
     setMessage('保存中…');

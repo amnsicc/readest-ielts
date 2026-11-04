@@ -94,7 +94,7 @@ function RoundForm({
   const [status, setStatus] = useState('');
   const [failed, setFailed] = useState(false);
   const dirty = Object.keys(draft).some((id) => draft[id] !== round.rawInputs[id]);
-  useUnsavedStudy(dirty || busy !== null || failed);
+  useUnsavedStudy(dirty || failed, busy !== null);
 
   async function action(kind: 'save' | 'check' | 'new') {
     if (inFlight.current) return;
