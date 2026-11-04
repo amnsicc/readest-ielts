@@ -219,7 +219,7 @@ export class ListeningStore {
         },
       );
     } catch (error) {
-      const latest = await this.getRound(input.roundId);
+      const latest = await this.readAfterWriteFailure(input.roundId, error);
       if (JSON.stringify(latest.draftHeads) !== JSON.stringify(input.expectedHeads))
         throw new LearningConflictError(latest.draftHeads, input.rawInputs);
       throw error;
@@ -268,11 +268,21 @@ export class ListeningStore {
     try {
       await this.append(`result/${roundId}`, `result/${roundId}`, { kind: 'result', result });
     } catch (error) {
-      const winner = await this.getRound(roundId);
+      const winner = await this.readAfterWriteFailure(roundId, error);
       if (winner.result) return winner;
       throw error;
     }
     return this.getRound(roundId);
+  }
+  private async readAfterWriteFailure(roundId: string, writeError: unknown) {
+    try {
+      return await this.getRound(roundId);
+    } catch (readError) {
+      throw new AggregateError(
+        [writeError, readError],
+        'Writing and the recovery read both failed.',
+      );
+    }
   }
   async close() {
     await this.db.close();

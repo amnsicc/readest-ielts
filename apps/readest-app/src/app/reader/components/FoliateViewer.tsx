@@ -12,6 +12,8 @@ import { BookConfig, PageInfo, ViewSettings } from '@/types/book';
 import { FoliateView, wrappedFoliateView } from '@/types/view';
 import { Insets } from '@/types/misc';
 import { useEnv } from '@/context/EnvContext';
+import { ReaderStudySense } from '@/app/learning/ReaderStudySense';
+import { findReadingMaterial, registerReadingTargets, type ReaderStudyTarget } from '@/services/learning/readerBridge';
 import { useThemeStore } from '@/store/themeStore';
 import { useReaderStore } from '@/store/readerStore';
 import { useBookDataStore } from '@/store/bookDataStore';
@@ -155,6 +157,7 @@ const FoliateViewer: React.FC<{
   const { registerBrightnessListeners, overlayVisible, overlayLevel } =
     useBrightnessGesture(bookKey);
   const bookData = getBookData(bookKey);
+  const [studyTarget, setStudyTarget] = useState<ReaderStudyTarget | null>(null);
   const viewState = getViewState(bookKey);
   const viewSettings = getViewSettings(bookKey);
   // PDF theme colors reach the canvas through CanvasRenderingContext2D.filter,
@@ -498,6 +501,12 @@ const FoliateViewer: React.FC<{
         detail.doc.addEventListener('click', handleClickCapture.bind(null, bookKey), {
           capture: true,
         });
+        const section = bookDoc.sections?.[detail.index]?.id;
+        if (bookData.file && section) {
+          void findReadingMaterial(bookData.file).then(material => {
+            if (material) registerReadingTargets(detail.doc, material, section, setStudyTarget);
+          });
+        }
         detail.doc.addEventListener(
           'click',
           handleClick.bind(
@@ -1166,6 +1175,7 @@ const FoliateViewer: React.FC<{
 
   return (
     <>
+      {studyTarget && <ReaderStudySense key={studyTarget.item.id} target={studyTarget} bookKey={bookKey} dismiss={() => setStudyTarget(null)} />}
       <ImageContextMenu bookKey={bookKey} />
       {selectedImage && (
         <ImageViewer

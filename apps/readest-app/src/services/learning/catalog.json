@@ -1,0 +1,607 @@
+{
+  "senses": [
+    {
+      "id": "trial:sense:001",
+      "number": "001",
+      "word": "atmosphere",
+      "meaning": "气氛",
+      "pos": "n.",
+      "grades": {
+        "reading": 0,
+        "listening": 1,
+        "speaking": 0,
+        "writing": 1
+      }
+    },
+    {
+      "id": "trial:sense:002",
+      "number": "002",
+      "word": "hydrosphere",
+      "meaning": "水圈",
+      "pos": "n.",
+      "grades": {
+        "reading": 2
+      }
+    },
+    {
+      "id": "trial:sense:003",
+      "number": "003",
+      "word": "lithosphere",
+      "meaning": "岩石圈",
+      "pos": "n.",
+      "grades": {
+        "reading": 2
+      }
+    },
+    {
+      "id": "trial:sense:004",
+      "number": "004",
+      "word": "oxygen",
+      "meaning": "氧气",
+      "pos": "n.",
+      "grades": {
+        "reading": 1,
+        "listening": 1,
+        "speaking": 1,
+        "writing": 1
+      }
+    },
+    {
+      "id": "trial:sense:005",
+      "number": "005",
+      "word": "oxide",
+      "meaning": "氧化物",
+      "pos": "n.",
+      "grades": {
+        "reading": 2,
+        "listening": 2
+      }
+    },
+    {
+      "id": "trial:sense:006",
+      "number": "006",
+      "word": "carbon dioxide",
+      "meaning": "二氧化碳",
+      "pos": "n.",
+      "grades": {
+        "reading": 1,
+        "listening": 1,
+        "speaking": 1,
+        "writing": 1
+      }
+    },
+    {
+      "id": "trial:sense:007",
+      "number": "007",
+      "word": "hydrogen",
+      "meaning": "氢",
+      "pos": "n.",
+      "grades": {
+        "reading": 1,
+        "listening": 2
+      }
+    },
+    {
+      "id": "trial:sense:008",
+      "number": "008",
+      "word": "core",
+      "meaning": "核心",
+      "pos": "n.",
+      "grades": {
+        "reading": 0,
+        "listening": 0,
+        "speaking": 1,
+        "writing": 0
+      }
+    },
+    {
+      "id": "trial:sense:crust:earth",
+      "number": "009",
+      "word": "crust",
+      "meaning": "地壳",
+      "pos": "n.",
+      "grades": {
+        "reading": 1,
+        "listening": 2
+      }
+    },
+    {
+      "id": "trial:sense:010",
+      "number": "010",
+      "word": "mantle",
+      "meaning": "地幔",
+      "pos": "n.",
+      "grades": {
+        "reading": 2
+      }
+    },
+    {
+      "id": "trial:sense:011",
+      "number": "011",
+      "word": "longitude",
+      "meaning": "经度",
+      "pos": "n.",
+      "grades": {
+        "reading": 2,
+        "listening": 2
+      }
+    },
+    {
+      "id": "trial:sense:012",
+      "number": "012",
+      "word": "latitude",
+      "meaning": "纬度",
+      "pos": "n.",
+      "grades": {
+        "reading": 1,
+        "listening": 2
+      }
+    },
+    {
+      "id": "trial:sense:013",
+      "number": "013",
+      "word": "horizon",
+      "meaning": "地平线",
+      "pos": "n.",
+      "grades": {
+        "reading": 1,
+        "listening": 1
+      }
+    },
+    {
+      "id": "trial:sense:014",
+      "number": "014",
+      "word": "altitude",
+      "meaning": "海拔",
+      "pos": "n.",
+      "grades": {
+        "reading": 1,
+        "listening": 1
+      }
+    },
+    {
+      "id": "trial:sense:015",
+      "number": "015",
+      "word": "disaster",
+      "meaning": "灾难",
+      "pos": "n.",
+      "grades": {
+        "reading": 1,
+        "listening": 1,
+        "speaking": 1,
+        "writing": 1
+      }
+    },
+    {
+      "id": "trial:sense:016",
+      "number": "016",
+      "word": "mishap",
+      "meaning": "小事故",
+      "pos": "n.",
+      "grades": {
+        "reading": 2
+      }
+    },
+    {
+      "id": "trial:sense:017",
+      "number": "017",
+      "word": "catastrophic",
+      "meaning": "灾难性的",
+      "pos": "adj.",
+      "grades": {
+        "reading": 1,
+        "listening": 1,
+        "writing": 1
+      }
+    },
+    {
+      "id": "trial:sense:018",
+      "number": "018",
+      "word": "calamity",
+      "meaning": "灾难",
+      "pos": "n.",
+      "grades": {
+        "reading": 2
+      }
+    },
+    {
+      "id": "trial:sense:019",
+      "number": "019",
+      "word": "endanger",
+      "meaning": "危及",
+      "pos": "vt.",
+      "grades": {
+        "reading": 1,
+        "listening": 1,
+        "writing": 1
+      }
+    },
+    {
+      "id": "trial:sense:020",
+      "number": "020",
+      "word": "jeopardise",
+      "meaning": "危及",
+      "pos": "vt.",
+      "grades": {
+        "reading": 1,
+        "listening": 2
+      }
+    },
+    {
+      "id": "trial:sense:supplement:1-A",
+      "number": "1-A",
+      "word": "atmospheric",
+      "meaning": "大气的",
+      "pos": "adj.",
+      "grades": {
+        "reading": 1,
+        "listening": 1
+      }
+    },
+    {
+      "id": "trial:sense:supplement:12-A",
+      "number": "12-A",
+      "word": "latitudes",
+      "meaning": "纬度地区(此义用复数)",
+      "pos": "n.",
+      "grades": {
+        "reading": 1,
+        "listening": 2
+      }
+    },
+    {
+      "id": "trial:sense:supplement:13-A",
+      "number": "13-A",
+      "word": "on the horizon",
+      "meaning": "即将发生",
+      "pos": "",
+      "grades": {
+        "reading": 1,
+        "listening": 1,
+        "speaking": 2,
+        "writing": 2
+      }
+    },
+    {
+      "id": "trial:sense:supplement:13-B",
+      "number": "13-B",
+      "word": "horizons",
+      "meaning": "眼界",
+      "pos": "n.",
+      "grades": {
+        "reading": 1,
+        "listening": 1,
+        "speaking": 1,
+        "writing": 1
+      }
+    },
+    {
+      "id": "trial:sense:supplement:13-D",
+      "number": "13-D",
+      "word": "broaden / expand / widen someone's horizons",
+      "meaning": "开阔某人的眼界",
+      "pos": "",
+      "grades": {
+        "reading": 1,
+        "listening": 1,
+        "speaking": 1,
+        "writing": 1
+      }
+    },
+    {
+      "id": "trial:sense:supplement:19-A",
+      "number": "19-A",
+      "word": "danger",
+      "meaning": "危险",
+      "pos": "n.",
+      "grades": {
+        "reading": 0,
+        "listening": 0,
+        "speaking": 0,
+        "writing": 1
+      }
+    },
+    {
+      "id": "trial:sense:supplement:19-C",
+      "number": "19-C",
+      "word": "dangerous",
+      "meaning": "危险的",
+      "pos": "adj.",
+      "grades": {
+        "reading": 0,
+        "listening": 0,
+        "speaking": 0,
+        "writing": 1
+      }
+    },
+    {
+      "id": "trial:sense:crust:bread",
+      "number": "009",
+      "word": "crust",
+      "meaning": "面包皮",
+      "pos": "n.",
+      "grades": {
+        "reading": 1
+      }
+    },
+    {
+      "id": "trial:sense:crust:pastry",
+      "number": "009",
+      "word": "crust",
+      "meaning": "酥皮",
+      "pos": "n.",
+      "grades": {}
+    },
+    {
+      "id": "trial:sense:crust:hard-layer",
+      "number": "009",
+      "word": "crust",
+      "meaning": "硬层",
+      "pos": "n.",
+      "grades": {}
+    }
+  ],
+  "reading": [
+    {
+      "id": "trial:reading:001-020:A",
+      "version": "trial:reading:001-020:A:v1",
+      "label": "A",
+      "file": "reading-A.epub",
+      "sha256": "309f5e4a76ace7f32b8c68d3f743f380411ffb171e31048467cf54d87bc93cdc",
+      "section": "OEBPS/article.xhtml",
+      "locations": [
+        {
+          "paragraph": "a-p01",
+          "anchor": "#g001",
+          "actual": "atmosphere",
+          "senseId": "trial:sense:001"
+        },
+        {
+          "paragraph": "a-p02",
+          "anchor": "#g013",
+          "actual": "horizon",
+          "senseId": "trial:sense:013"
+        },
+        {
+          "paragraph": "a-p02",
+          "anchor": "#g011",
+          "actual": "longitude",
+          "senseId": "trial:sense:011"
+        },
+        {
+          "paragraph": "a-p02",
+          "anchor": "#g012",
+          "actual": "latitude",
+          "senseId": "trial:sense:012"
+        },
+        {
+          "paragraph": "a-p02",
+          "anchor": "#g014",
+          "actual": "altitude",
+          "senseId": "trial:sense:014"
+        },
+        {
+          "paragraph": "a-p03",
+          "anchor": "#g009",
+          "actual": "crust",
+          "senseId": "trial:sense:crust:earth"
+        },
+        {
+          "paragraph": "a-p03",
+          "anchor": "#g010",
+          "actual": "mantle",
+          "senseId": "trial:sense:010"
+        },
+        {
+          "paragraph": "a-p03",
+          "anchor": "#g003",
+          "actual": "lithosphere",
+          "senseId": "trial:sense:003"
+        },
+        {
+          "paragraph": "a-p03",
+          "anchor": "#g002",
+          "actual": "hydrosphere",
+          "senseId": "trial:sense:002"
+        },
+        {
+          "paragraph": "a-p04",
+          "anchor": "#g004",
+          "actual": "oxygen",
+          "senseId": "trial:sense:004"
+        },
+        {
+          "paragraph": "a-p04",
+          "anchor": "#g005",
+          "actual": "oxide",
+          "senseId": "trial:sense:005"
+        },
+        {
+          "paragraph": "a-p04",
+          "anchor": "#g007",
+          "actual": "hydrogen",
+          "senseId": "trial:sense:007"
+        },
+        {
+          "paragraph": "a-p04",
+          "anchor": "#g006",
+          "actual": "carbon dioxide",
+          "senseId": "trial:sense:006"
+        },
+        {
+          "paragraph": "a-p05",
+          "anchor": "#g015",
+          "actual": "disaster",
+          "senseId": "trial:sense:015"
+        },
+        {
+          "paragraph": "a-p05",
+          "anchor": "#g017",
+          "actual": "catastrophic",
+          "senseId": "trial:sense:017"
+        },
+        {
+          "paragraph": "a-p05",
+          "anchor": "#g018",
+          "actual": "calamity",
+          "senseId": "trial:sense:018"
+        },
+        {
+          "paragraph": "a-p06",
+          "anchor": "#g016",
+          "actual": "mishap",
+          "senseId": "trial:sense:016"
+        },
+        {
+          "paragraph": "a-p06",
+          "anchor": "#g019",
+          "actual": "endanger",
+          "senseId": "trial:sense:019"
+        },
+        {
+          "paragraph": "a-p06",
+          "anchor": "#g020",
+          "actual": "jeopardise",
+          "senseId": "trial:sense:020"
+        },
+        {
+          "paragraph": "a-p06",
+          "anchor": "#g008",
+          "actual": "core",
+          "senseId": "trial:sense:008"
+        }
+      ]
+    },
+    {
+      "id": "trial:reading:001-020:B",
+      "version": "trial:reading:001-020:B:v1",
+      "label": "B",
+      "file": "reading-B.epub",
+      "sha256": "6a618dd7d9309c94d3dd649fd7913887ce82283b1b5a8d1f9d37bb8197f239c9",
+      "section": "OEBPS/article.xhtml",
+      "locations": [
+        {
+          "paragraph": "b-p01",
+          "anchor": "#g001",
+          "actual": "atmosphere",
+          "senseId": "trial:sense:001"
+        },
+        {
+          "paragraph": "b-p02",
+          "anchor": "#g011",
+          "actual": "longitude",
+          "senseId": "trial:sense:011"
+        },
+        {
+          "paragraph": "b-p02",
+          "anchor": "#g012",
+          "actual": "latitude",
+          "senseId": "trial:sense:012"
+        },
+        {
+          "paragraph": "b-p02",
+          "anchor": "#g014",
+          "actual": "altitude",
+          "senseId": "trial:sense:014"
+        },
+        {
+          "paragraph": "b-p02",
+          "anchor": "#g013",
+          "actual": "horizon",
+          "senseId": "trial:sense:013"
+        },
+        {
+          "paragraph": "b-p03",
+          "anchor": "#g009",
+          "actual": "crust",
+          "senseId": "trial:sense:crust:earth"
+        },
+        {
+          "paragraph": "b-p03",
+          "anchor": "#g010",
+          "actual": "mantle",
+          "senseId": "trial:sense:010"
+        },
+        {
+          "paragraph": "b-p03",
+          "anchor": "#g003",
+          "actual": "lithosphere",
+          "senseId": "trial:sense:003"
+        },
+        {
+          "paragraph": "b-p03",
+          "anchor": "#g002",
+          "actual": "hydrosphere",
+          "senseId": "trial:sense:002"
+        },
+        {
+          "paragraph": "b-p04",
+          "anchor": "#g005",
+          "actual": "oxide",
+          "senseId": "trial:sense:005"
+        },
+        {
+          "paragraph": "b-p04",
+          "anchor": "#g004",
+          "actual": "oxygen",
+          "senseId": "trial:sense:004"
+        },
+        {
+          "paragraph": "b-p04",
+          "anchor": "#g007",
+          "actual": "hydrogen",
+          "senseId": "trial:sense:007"
+        },
+        {
+          "paragraph": "b-p04",
+          "anchor": "#g006",
+          "actual": "carbon dioxide",
+          "senseId": "trial:sense:006"
+        },
+        {
+          "paragraph": "b-p05",
+          "anchor": "#g008",
+          "actual": "core",
+          "senseId": "trial:sense:008"
+        },
+        {
+          "paragraph": "b-p05",
+          "anchor": "#g015",
+          "actual": "disaster",
+          "senseId": "trial:sense:015"
+        },
+        {
+          "paragraph": "b-p05",
+          "anchor": "#g017",
+          "actual": "catastrophic",
+          "senseId": "trial:sense:017"
+        },
+        {
+          "paragraph": "b-p05",
+          "anchor": "#g018",
+          "actual": "calamity",
+          "senseId": "trial:sense:018"
+        },
+        {
+          "paragraph": "b-p06",
+          "anchor": "#g016",
+          "actual": "mishap",
+          "senseId": "trial:sense:016"
+        },
+        {
+          "paragraph": "b-p06",
+          "anchor": "#g019",
+          "actual": "endanger",
+          "senseId": "trial:sense:019"
+        },
+        {
+          "paragraph": "b-p06",
+          "anchor": "#g020",
+          "actual": "jeopardise",
+          "senseId": "trial:sense:020"
+        }
+      ]
+    }
+  ],
+  "transcript": "Before the school group arrives, I'd like to explain how we're going to run this morning's session. The aim is to create a relaxed atmosphere, so please let the children suggest answers before you explain anything. We want them to notice evidence, not feel they're being tested.\n\nStart with the model of the Earth. Point to the crust, the outermost layer, and explain that we usually learn about things below it indirectly. At the core of this session is a simple idea: evidence can tell us about something we can't see for ourselves.\n\nYou can demonstrate that idea with the sealed gas containers on the same table. The first contains oxygen. Its appearance alone won't distinguish it from ordinary air, so explain that scientists use suitable tests instead. The other is labelled hydrogen. We aren't going to open either container; use the short video to show how scientists identify their contents.\n\nNext, compare a clean piece of iron with a rusty one. Explain that a reaction has produced an oxide. This is a useful example of a change we can observe directly. Before the group leaves, show the room's carbon dioxide monitor. Ask why that reading might change as more people come inside. You don't need to give them every answer. Leave them with a question they can think about on the journey home.\n"
+}

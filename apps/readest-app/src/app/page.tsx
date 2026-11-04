@@ -1,7 +1,7 @@
 'use client';
 
-import LibraryPage from './library/page';
+import { LearningHome } from './learning/LearningHome';
 
 export default function HomePage() {
-  return <LibraryPage />;
+  return <LearningHome />;
 }

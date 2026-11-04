@@ -72,14 +72,19 @@ const getNativeAppService = async () => {
 };
 
 let webAppService: AppService | null = null;
-const getWebAppService = async () => {
-  if (!webAppService) {
+let webAppServiceInit: Promise<AppService> | undefined;
+const getWebAppService = () => {
+  webAppServiceInit ??= (async () => {
     const { WebAppService } = await import('@/services/webAppService');
     const service = new WebAppService();
     await service.init();
     webAppService = service;
-  }
-  return webAppService;
+    return service;
+  })().catch((error) => {
+    webAppServiceInit = undefined;
+    throw error;
+  });
+  return webAppServiceInit;
 };
 
 const environmentConfig: EnvConfigType = {
