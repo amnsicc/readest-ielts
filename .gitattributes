@@ -9,5 +9,7 @@ apps/readest-app/src/app/reader/components/ReaderContent.tsx text eol=lf
 apps/readest-app/src/components/Providers.tsx text eol=lf
 apps/readest-app/src/context/PHContext.tsx text eol=lf
 apps/readest-app/src/services/learning/studySession.ts text eol=lf
+apps/readest-app/src/services/learning/workspace.ts text eol=lf
+apps/readest-app/src/services/database/nativeDatabaseService.ts text eol=lf
 apps/readest-app/src/utils/version.ts text eol=lf
 apps/readest-app/src/utils/window.ts text eol=lf

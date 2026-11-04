@@ -29,6 +29,7 @@ vi.mock('@/utils/event', () => ({
 
 import { getAllWindows, getCurrentWindow } from '@tauri-apps/api/window';
 import { invoke } from '@tauri-apps/api/core';
+import { emitTo } from '@tauri-apps/api/event';
 import { type as osType, version as osVersion } from '@tauri-apps/plugin-os';
 import { useTrafficLightStore } from '@/store/trafficLightStore';
 import type { AppService } from '@/types/system';
@@ -67,6 +68,27 @@ beforeEach(() => {
 });
 
 describe('tauriHandleOnCloseWindow', () => {
+  test('closing the last reader exits when the main window has already closed', async () => {
+    vi.mocked(osType).mockReturnValue('windows');
+    const { win, trigger } = makeWindow('reader-0');
+    vi.mocked(getCurrentWindow).mockReturnValue(
+      win as unknown as ReturnType<typeof getCurrentWindow>,
+    );
+    vi.mocked(getAllWindows).mockResolvedValue([win] as unknown as Awaited<
+      ReturnType<typeof getAllWindows>
+    >);
+    vi.mocked(emitTo).mockRejectedValueOnce(new Error('main window no longer exists'));
+    const unlisten = await tauriHandleOnCloseWindow(() => {});
+    try {
+      await trigger();
+      vi.advanceTimersByTime(300);
+      expect(win.destroy).toHaveBeenCalledOnce();
+    } finally {
+      unlisten();
+      vi.mocked(emitTo).mockReset();
+      vi.mocked(emitTo).mockResolvedValue(undefined);
+    }
+  });
   test('on macOS, leaves the main window alone — no book cleanup, no destroy', async () => {
     // Rust hide-on-close handler hides the window; the user expects the active
     // book to still be loaded when they bring the window back.

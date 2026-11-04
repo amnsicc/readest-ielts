@@ -84,6 +84,9 @@ public static class TrialClosePrompt {
   [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetClassName(IntPtr hwnd, StringBuilder name, int length);
   [DllImport("user32.dll")] static extern IntPtr GetDlgItem(IntPtr hwnd, int id);
   [DllImport("user32.dll")] static extern bool PostMessage(IntPtr hwnd, uint message, IntPtr wParam, IntPtr lParam);
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetWindowText(IntPtr hwnd, StringBuilder text, int length);
+  [DllImport("user32.dll")] static extern bool EnumChildWindows(IntPtr hwnd, EnumProc callback, IntPtr data);
+  [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr hwnd);
   public static long Cancel(uint expectedPid) {
     long result = 0;
     EnumWindows((hwnd, data) => {
@@ -92,8 +95,17 @@ public static class TrialClosePrompt {
       if (pid != expectedPid) return true;
       var name = new StringBuilder(256);
       GetClassName(hwnd, name, name.Capacity);
-      if (name.ToString() != "#32770" || GetDlgItem(hwnd, 7) == IntPtr.Zero) return true;
-      if (PostMessage(hwnd, 0x0111, new IntPtr(7), IntPtr.Zero)) result = hwnd.ToInt64();
+      if (name.ToString() != "#32770" || !IsWindowVisible(hwnd)) return true;
+      IntPtr no = IntPtr.Zero;
+      EnumChildWindows(hwnd, (button, unused) => {
+        var caption = new StringBuilder(512);
+        GetWindowText(button, caption, caption.Capacity);
+        var value = caption.ToString();
+        if (value.Contains("否") || value.Replace("&", "").Equals("No", StringComparison.OrdinalIgnoreCase)) no = button;
+        return true;
+      }, IntPtr.Zero);
+      if (no == IntPtr.Zero) return true;
+      if (PostMessage(no, 0x00F5, IntPtr.Zero, IntPtr.Zero)) result = hwnd.ToInt64();
       return false;
     }, IntPtr.Zero);
     return result;
@@ -128,6 +140,11 @@ async function verify() {
   const [context] = browser.contexts();
   page = context.pages()[0] ?? (await context.waitForEvent('page'));
   page.setDefaultTimeout(20000);
+  page.on('console', async (message) => {
+    if (!message.text().includes('[ielts-close')) return;
+    const values = await Promise.all(message.args().map((arg) => arg.jsonValue().catch(() => null)));
+    console.log(JSON.stringify({ closeDiagnostic: values, capturedAt: Date.now() }));
+  });
   const cdp = await context.newCDPSession(page);
   await cdp.send('Network.enable');
   await cdp.send('Network.setCacheDisabled', { cacheDisabled: true });
@@ -326,6 +343,7 @@ async function verify() {
   await b.getByText(personal, { exact: true }).waitFor();
   await b.getByText('源釋義：氣氛', { exact: true }).or(b.getByText('源释义：气氛')).waitFor();
   await page.screenshot({ path: join(output, 'reading-b.png') });
+  await b.getByRole('button', { name: '关闭', exact: true }).click();
   emit('reading A and B source occurrence, shared personal meaning, reading mark and filter');
 
   await home();

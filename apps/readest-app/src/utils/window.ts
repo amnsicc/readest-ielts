@@ -129,8 +129,15 @@ export const tauriHandleOnCloseWindow = async (
   host?: AppService,
 ) => {
   const currentWindow = getCurrentWindow();
+  const trace = (stage: string) => {
+    if (process.env['NEXT_PUBLIC_IELTS_TRIAL'] === '1') {
+      console.info('[ielts-close]', { stage, window: currentWindow.label, at: Date.now() });
+    }
+  };
+  trace('listener-register');
   return await currentWindow.onCloseRequested(async (event) => {
     event.preventDefault();
+    trace('requested');
     // On macOS, the main window's close is intercepted by the Rust backend
     // to hide the window (close-to-hide), keeping the app in the dock. Skip
     // the in-app cleanup — the user is just minimizing the window and
@@ -143,14 +150,19 @@ export const tauriHandleOnCloseWindow = async (
       if (
         !(await studyCanClose((message) => (host ? host.ask(message) : window.confirm(message))))
       ) {
+        trace('editor-retained');
         return;
       }
+      trace('reader-cleanup-start');
       await callback();
+      trace('reader-cleanup-done');
       // The native database plugin shares connections across WebViews. Closing
       // one reader must not invalidate handles in another open window.
       if (host && (await getAllWindows()).length === 1) {
+        trace('workspace-close-start');
         const { closeStudyWorkspace } = await import('@/services/learning/studySession');
         await closeStudyWorkspace(host);
+        trace('workspace-close-done');
       }
     } catch (error) {
       console.error('Window close failed; keeping the current window open', error);
@@ -161,10 +173,22 @@ export const tauriHandleOnCloseWindow = async (
       return;
     }
     if (currentWindow.label.startsWith('reader')) {
-      await emitTo('main', 'close-reader-window', { label: currentWindow.label });
-      setTimeout(() => currentWindow.destroy(), 300);
+      try {
+        await emitTo('main', 'close-reader-window', { label: currentWindow.label });
+      } catch (error) {
+        console.warn('Reader closed after its main window notification failed', error);
+      }
+      trace('reader-destroy-scheduled');
+      setTimeout(() => {
+        trace('destroy-start');
+        void currentWindow
+          .destroy()
+          .catch((error) => console.error('Window destroy failed', error));
+      }, 300);
     } else if (currentWindow.label === 'main') {
+      trace('destroy-start');
       await currentWindow.destroy();
+      trace('destroy-done');
     }
   });
 };

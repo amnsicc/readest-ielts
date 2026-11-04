@@ -44,14 +44,25 @@ export class NativeDatabaseService implements DatabaseService {
   }
 
   async close(): Promise<void> {
+    const trace = (stage: string) => {
+      if (process.env['NEXT_PUBLIC_IELTS_TRIAL'] === '1') {
+        console.info('[ielts-close-db]', { stage, database: this.db.path, at: Date.now() });
+      }
+    };
     // Turso is WAL-only with no auto-checkpoint and does not fold the WAL on
     // close by itself; without this the main file never grows past its header
     // and every written byte sits in the -wal sidecar, which file-level copy
     // or sync of the containing directory can miss.
-    await this.execute('PRAGMA wal_checkpoint(TRUNCATE)').catch(() => {});
+    trace('checkpoint-start');
+    await this.execute('PRAGMA wal_checkpoint(TRUNCATE)').catch((error) => {
+      console.warn('Database checkpoint on close failed', error);
+    });
+    trace('checkpoint-done');
     // The plugin's arg-less close() drains EVERY open connection app-wide;
     // pass our path so closing this database cannot tear down the others
     // (statistics.db etc. dying with "database ... not loaded", READEST-6).
+    trace('connection-close-start');
     await this.db.close(this.db.path);
+    trace('connection-close-done');
   }
 }

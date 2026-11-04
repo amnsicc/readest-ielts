@@ -223,6 +223,9 @@ export class LearningWorkspace {
   close(): Promise<void> {
     this.closing ??= this.pending
       .then(async () => {
+        if (process.env['NEXT_PUBLIC_IELTS_TRIAL'] === '1') {
+          console.info('[ielts-close-workspace]', { stage: 'writes-settled', at: Date.now() });
+        }
         if (this.failedSaves.size) throw this.failedSaves.values().next().value;
         if (this.listening) await (await this.listening).close();
         return this.persistence.close();
