@@ -74,6 +74,30 @@ it('cancelling a Windows close request preserves the unsaved editor', async () =
   }
 });
 
+it('awaits an asynchronous native confirmation before closing a dirty window', async () => {
+  let request: ((event: { preventDefault: () => void }) => Promise<void>) | undefined;
+  const destroy = vi.fn().mockResolvedValue(undefined);
+  vi.mocked(getCurrentWindow).mockReturnValue({
+    label: 'main',
+    onCloseRequested: async (handler: typeof request) => {
+      request = handler;
+      return () => {};
+    },
+    destroy,
+  } as unknown as ReturnType<typeof getCurrentWindow>);
+  vi.spyOn(window, 'confirm').mockImplementation(() => {
+    return Promise.resolve(false) as unknown as boolean;
+  });
+  render(<Editor />);
+  const unlisten = await tauriHandleOnCloseWindow(() => {});
+  try {
+    await request!({ preventDefault: () => {} });
+    expect(destroy).not.toHaveBeenCalled();
+  } finally {
+    unlisten();
+  }
+});
+
 it('blocks close during a save and preserves a failed draft until a successful retry', async () => {
   vi.stubGlobal('crypto', webcrypto);
   const root = await mkdtemp(join(tmpdir(), 'readest-windows-close-'));

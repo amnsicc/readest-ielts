@@ -15,9 +15,9 @@ if errorlevel 1 exit /b %errorlevel%
 for /f "delims=" %%V in ('node -p "require('./src-tauri/tauri.ielts.conf.json').version"') do set "NEXT_PUBLIC_APP_VERSION=%%V"
 for /f "delims=" %%N in ('node -p "require('./src-tauri/tauri.ielts.conf.json').productName"') do set "NEXT_PUBLIC_APP_NAME=%%N"
 if /i "%~1"=="restore" goto restore
-call pnpm.cmd exec tauri build --ci --no-bundle --features ielts-trial --config src-tauri/tauri.ielts.conf.json -- --locked
+call pnpm.cmd exec tauri build --ci --no-bundle --features ielts-trial --config src-tauri/tauri.ielts.conf.json -- --locked --config "profile.release.package.Readest.opt-level=1"
 exit /b %errorlevel%
 :restore
 for /f "delims=" %%N in ('node -p "require('./src-tauri/tauri.ielts-restore.conf.json').productName"') do set "NEXT_PUBLIC_APP_NAME=%%N"
-call pnpm.cmd exec tauri build --ci --no-bundle --features ielts-trial --config src-tauri/tauri.ielts.conf.json --config src-tauri/tauri.ielts-restore.conf.json -- --locked
+call pnpm.cmd exec tauri build --ci --no-bundle --features ielts-trial --config src-tauri/tauri.ielts.conf.json --config src-tauri/tauri.ielts-restore.conf.json -- --locked --config "profile.release.package.Readest.opt-level=1"
 exit /b %errorlevel%

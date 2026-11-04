@@ -48,10 +48,8 @@ function Assert-Inventory([string]$Directory, [object[]]$Expected) {
 if ($Mode -eq 'Backup') {
     if (Test-Path -LiteralPath $backup) { throw 'Choose a new directory for the backup.' }
     $source = Join-Path $bases.Roaming $appId
-    foreach ($database in @('learning.db','listening.db')) {
-        if (-not (Test-Path -LiteralPath (Join-Path $source "Readest\Learning\$database"))) {
-            throw "The expected database is missing: $database"
-        }
+    if (-not (Test-Path -LiteralPath $source -PathType Container)) {
+        throw "The app profile has not been created: $source"
     }
     New-Item -ItemType Directory -Path $backup | Out-Null
     $manifest = [ordered]@{}

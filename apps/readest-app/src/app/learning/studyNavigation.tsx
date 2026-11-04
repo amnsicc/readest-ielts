@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useLayoutEffect, type ComponentProps } from 'react';
 
 const unsaved = new Map<symbol, boolean>();
+const discardPrompt = '离开将放弃尚未保存的学习编辑。是否离开当前页面？';
 let protectedEntryIndex: number | undefined;
 let protectedEntryKey: string | undefined;
 let restoring = false;
@@ -58,10 +59,19 @@ function onPopState(event: PopStateEvent) {
 }
 
 export function studyCanLeave() {
-  if ([...unsaved.values()].some(Boolean)) {
+  if (unsaved.size === 0) return true;
+  // The Tauri dialog plugin replaces window.confirm with an async IPC call.
+  // History traversal needs a synchronous decision, so keep the current editor.
+  if (process.env['NEXT_PUBLIC_APP_PLATFORM'] === 'tauri' || [...unsaved.values()].some(Boolean)) {
     return false;
   }
-  return unsaved.size === 0 || window.confirm('离开将放弃尚未保存的学习编辑。是否离开当前页面？');
+  return window.confirm(discardPrompt);
+}
+
+export async function studyCanClose(ask: (message: string) => boolean | Promise<boolean>) {
+  if (unsaved.size === 0) return true;
+  if ([...unsaved.values()].some(Boolean)) return false;
+  return (await ask(discardPrompt)) === true && ![...unsaved.values()].some(Boolean);
 }
 
 function onNavigate(event: Event) {

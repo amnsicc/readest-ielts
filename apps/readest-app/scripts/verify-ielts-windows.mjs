@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { execFile, spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
+import { createWriteStream } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { join, resolve } from 'node:path';
@@ -10,9 +11,9 @@ import { chromium } from 'playwright';
 
 const [exeArg, outputArg, mode = 'exercise'] = process.argv.slice(2);
 if (process.platform !== 'win32' || !exeArg || !outputArg) {
-  throw new Error('Usage on Windows: node verify-ielts-windows.mjs <exe> <output> [exercise|reopen|restore]');
+  throw new Error('Usage on Windows: node verify-ielts-windows.mjs <exe> <output> [exercise|reopen|restore|smoke]');
 }
-assert.ok(['exercise', 'reopen', 'restore'].includes(mode));
+assert.ok(['exercise', 'reopen', 'restore', 'smoke'].includes(mode));
 const exe = resolve(exeArg);
 const output = resolve(outputArg);
 const run = promisify(execFile);
@@ -42,8 +43,10 @@ const child = spawn(exe, [], {
     ALL_PROXY: proxy,
     NO_PROXY: 'localhost,127.0.0.1,tauri.localhost,ipc.localhost,asset.localhost,rangefile.localhost',
   },
-  stdio: 'ignore',
+  stdio: ['ignore', 'pipe', 'pipe'],
 });
+child.stdout.pipe(createWriteStream(join(output, 'app-stdout.log')));
+child.stderr.pipe(createWriteStream(join(output, 'app-stderr.log')));
 const closed = new Promise((done, reject) => {
   child.once('error', reject);
   child.once('exit', (code, signal) => done({ code, signal }));
@@ -61,7 +64,56 @@ const requestClose = async () => {
   assert.match(stdout, /True/i);
 };
 
-try {
+const verifyExit = async () => {
+  await requestClose();
+  const stopped = await Promise.race([closed, delay(12000, null, { ref: false })]);
+  assert.deepEqual(stopped, { code: 0, signal: null });
+  emit('native process completely exited');
+};
+
+const cancelNativeClose = async () => {
+  const script = `
+Add-Type @'
+using System;
+using System.Runtime.InteropServices;
+using System.Text;
+public static class TrialClosePrompt {
+  public delegate bool EnumProc(IntPtr hwnd, IntPtr data);
+  [DllImport("user32.dll")] static extern bool EnumWindows(EnumProc callback, IntPtr data);
+  [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr hwnd, out uint pid);
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetClassName(IntPtr hwnd, StringBuilder name, int length);
+  [DllImport("user32.dll")] static extern IntPtr GetDlgItem(IntPtr hwnd, int id);
+  [DllImport("user32.dll")] static extern bool PostMessage(IntPtr hwnd, uint message, IntPtr wParam, IntPtr lParam);
+  public static long Cancel(uint expectedPid) {
+    long result = 0;
+    EnumWindows((hwnd, data) => {
+      uint pid;
+      GetWindowThreadProcessId(hwnd, out pid);
+      if (pid != expectedPid) return true;
+      var name = new StringBuilder(256);
+      GetClassName(hwnd, name, name.Capacity);
+      if (name.ToString() != "#32770" || GetDlgItem(hwnd, 7) == IntPtr.Zero) return true;
+      if (PostMessage(hwnd, 0x0111, new IntPtr(7), IntPtr.Zero)) result = hwnd.ToInt64();
+      return false;
+    }, IntPtr.Zero);
+    return result;
+  }
+}
+'@
+$deadline=(Get-Date).AddSeconds(8)
+do {
+  $dialogHandle=[TrialClosePrompt]::Cancel(${child.pid})
+  if($dialogHandle -ne 0) { "cancelled native dialog HWND $dialogHandle"; exit 0 }
+  Start-Sleep -Milliseconds 150
+} while((Get-Date) -lt $deadline)
+throw 'No native Yes/No dialog for the tested process'
+`;
+  const { stdout } = await run('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script]);
+  assert.match(stdout, /cancelled native dialog HWND \d+/);
+  console.log(stdout.trim());
+};
+
+async function verify() {
   let available = false;
   for (let retry = 0; retry < 120; retry++) {
     if (child.exitCode !== null) throw new Error(`App exited before WebView2: ${child.exitCode}`);
@@ -131,13 +183,24 @@ try {
     nativeProbe,
   });
   await page.screenshot({ path: join(output, 'home.png') });
+  if (mode === 'smoke') {
+    await verifyExit();
+    return;
+  }
 
   const openModule = async (name, material) => {
     await page.getByRole('link', { name: new RegExp(`^${name}`) }).first().click();
     await page.getByRole('link', { name: material, exact: true }).click();
   };
   const home = async () => {
-    await page.goto(new URL('/', page.url()).href);
+    if (new URL(page.url()).pathname.startsWith('/reader')) {
+      const box = await page.locator('.foliate-viewer').first().boundingBox();
+      assert.ok(box);
+      await page.mouse.click(box.x + box.width / 2, box.y + 4);
+      await page.getByRole('button', { name: /^(Go to Library|前往书库|前往書庫)$/ }).first().click();
+      await page.waitForURL(/\/library/);
+    }
+    await page.getByRole('link', { name: '学习区', exact: true }).first().click();
     await page.getByRole('heading', { name: '学习区' }).waitFor();
   };
   const openReaderSense = async (label) => {
@@ -168,11 +231,8 @@ try {
     await a.getByRole('button', { name: '编辑个人释义' }).click();
     const draft = a.getByLabel('个人释义');
     await draft.fill(personal);
-    const prompt = page.waitForEvent('dialog');
     await requestClose();
-    const confirmation = await prompt;
-    assert.match(confirmation.message(), /尚未保存/);
-    await confirmation.dismiss();
+    await cancelNativeClose();
     assert.equal(await draft.inputValue(), personal);
     // Inject one failure at the WebView-to-native storage transport. Reads and
     // the successful retry still use the actual native database plugin.
@@ -203,9 +263,8 @@ try {
     assert.equal(await draft.inputValue(), personal);
     await page.evaluate(() => window.releaseTrialWrite());
     await a.getByText('保存失败。当前编辑仍在，可重试。').waitFor();
-    const failurePrompt = page.waitForEvent('dialog');
     await requestClose();
-    await (await failurePrompt).dismiss();
+    await cancelNativeClose();
     assert.equal(await draft.inputValue(), personal);
     await a.getByRole('button', { name: '保存释义' }).click();
     await a.getByText('已保存', { exact: true }).waitFor();
@@ -404,10 +463,11 @@ try {
     ...media,
     verification: mode === 'exercise' ? 'full playback and Web Audio capture' : 'pause, seek and resume',
   });
-  await requestClose();
-  const stopped = await Promise.race([closed, delay(12000, null, { ref: false })]);
-  assert.deepEqual(stopped, { code: 0, signal: null });
-  emit('native process completely exited');
+  await verifyExit();
+}
+
+try {
+  await verify();
 } catch (error) {
   if (page && !page.isClosed()) {
     await page.screenshot({ path: join(output, 'failure.png'), timeout: 5000 }).catch(() => {});

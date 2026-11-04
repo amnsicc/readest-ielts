@@ -138,9 +138,13 @@ export const tauriHandleOnCloseWindow = async (
     if (currentWindow.label === 'main' && (await osType()) === 'macos') {
       return;
     }
-    const { studyCanLeave } = await import('@/app/learning/studyNavigation');
-    if (!studyCanLeave()) return;
     try {
+      const { studyCanClose } = await import('@/app/learning/studyNavigation');
+      if (
+        !(await studyCanClose((message) => (host ? host.ask(message) : window.confirm(message))))
+      ) {
+        return;
+      }
       await callback();
       // The native database plugin shares connections across WebViews. Closing
       // one reader must not invalidate handles in another open window.
