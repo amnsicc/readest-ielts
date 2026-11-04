@@ -4,12 +4,15 @@ param(
     [string]$Mode,
 
     [Parameter(Mandatory)]
-    [string]$BackupDirectory
+    [string]$BackupDirectory,
+
+    [ValidateSet('local.ielts.readest.trial', 'local.ielts.readest.trial.restore.w01')]
+    [string]$ApplicationId = 'local.ielts.readest.trial'
 )
 
 $ErrorActionPreference = 'Stop'
-$appId = 'local.ielts.readest.trial'
-$restoreId = 'local.ielts.readest.trial.restore'
+$appId = $ApplicationId
+$restoreId = 'local.ielts.readest.trial.restore.w01'
 if (Get-Process -Name 'readest-ielts','readest-ielts-restore' -ErrorAction SilentlyContinue) {
     throw 'Close all IELTS trial windows and wait for both programs to exit before copying.'
 }
@@ -80,6 +83,7 @@ if ($Mode -eq 'Backup') {
     $statePath = Join-Path $backup 'backup-state.json'
     $state = [ordered]@{
         formatVersion=1
+        applicationId=$appId
         status='incomplete'
         section=''
         startedAt=(Get-Date).ToString('o')
@@ -127,7 +131,9 @@ if (-not $manifest.Contains('Roaming') -or -not $manifest.Contains('Local')) {
 }
 foreach ($entry in $bases.GetEnumerator()) {
     $dest = Join-Path $entry.Value $restoreId
-    if (Test-Path -LiteralPath $dest) { throw "Restore test destination already exists: $dest" }
+    if ((Test-Path -LiteralPath $dest) -and @(Get-ChildItem -LiteralPath $dest -Force).Count) {
+        throw "Restore test destination is not empty: $dest"
+    }
     if ($manifest.Contains($entry.Key)) {
         Assert-Inventory (Join-Path $backup $entry.Key) $manifest[$entry.Key]
     }
